@@ -13,6 +13,7 @@ from task_function import (
 def lambda_handler(event, context):
     logger = logging.getLogger(__name__)
     logger.info("tasks.lambda_handler invoked")
+    logger.info("request_id=%s", getattr(context, "aws_request_id", "N/A"))
 
     # Get HTTP method and CORS headers
     method = event.get("httpMethod", "").upper()
