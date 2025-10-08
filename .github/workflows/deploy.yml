@@ -1,0 +1,113 @@
+name: Deploy Timesheets Lambdas
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'approvals/**'
+      - 'client_table/**'
+      - 'contacts/**'
+      - 'dashboard/**'
+      - 'iam/**'
+      - 'lookup/**'
+      - 'projects_table/**'
+      - 'project_assignment/**'
+      - 'tasks/**'
+      - 'timeentries/**'
+      - 'update_password/**'
+      - 'user_login/**'
+      - 'user_routes/**'
+      - '.github/workflows/deploy.yml'
+      - 'template.yaml'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.filter.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - id: filter
+        run: |
+          # Ensure jq is available
+          if ! command -v jq >/dev/null 2>&1; then
+            echo "Installing jq..."
+            sudo apt-get update && sudo apt-get install -y jq
+          fi
+
+          # Prefer GitHub provided range when available, fallback to HEAD^..HEAD
+          RANGE=${{ github.event.before }}..${{ github.event.after }}
+          if [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+            RANGE=HEAD^..HEAD
+          fi
+
+          CHANGED=$(git diff --name-only $RANGE | grep -E '^(approvals|client_table|contacts|dashboard|iam|lookup|projects_table|project_assignment|tasks|timeentries|update_password|user_login|user_routes)/' | cut -d/ -f1 | sort -u | tr '\n' ' ')
+          echo "Modules changed: $CHANGED"
+          if [ -z "$CHANGED" ]; then
+            echo "changed=" >> $GITHUB_OUTPUT
+          else
+            # Build JSON array for matrix
+            JSON=$(echo $CHANGED | jq -R -s -c 'split(" ")[:-1]')
+            echo "changed=$JSON" >> $GITHUB_OUTPUT
+          fi
+
+  deploy:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.changed != '' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install SAM CLI
+        run: pip install aws-sam-cli
+
+      - name: Validate template
+        run: |
+          if ! command -v sam >/dev/null 2>&1; then
+            echo "SAM CLI not found after install"
+            exit 1
+          fi
+          sam validate --template template.yaml --region us-east-1
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::026090520154:role/aws_github
+          aws-region: us-east-1
+
+      - name: Build SAM application
+        run: sam build --template template.yaml
+
+      - name: Deploy SAM application
+        run: |
+          echo "Deploying all functions (changed modules: ${{ needs.detect-changes.outputs.changed }})..."
+          sam deploy \
+            --template-file template.yaml \
+            --stack-name timesheets-api-stack \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --region us-east-1
+
+      - name: Get API Gateway URL
+        run: |
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name timesheets-api-stack \
+            --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayUrl`].OutputValue' \
+            --output text \
+            --region us-east-1)
+          echo "API Gateway URL: $API_URL"
+          echo "You can now access your API at: $API_URL"

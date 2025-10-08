@@ -1,0 +1,218 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Timesheets multi-module Lambda stack
+
+Globals:
+  Function:
+    Runtime: python3.13
+    Timeout: 30
+    MemorySize: 256
+
+Resources:
+  ApprovalsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: approvals-handler
+      CodeUri: approvals/
+      Handler: lambda_function.lambda_handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /approvals
+            Method: ANY
+
+  ClientTableFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: client_table-handler
+      CodeUri: client_table/
+      Handler: lambda_function.lambda_handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /client_table
+            Method: ANY
+
+  ContactsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: contacts-handler
+      CodeUri: contacts/
+      Handler: lambda_function.lambda_handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /contacts
+            Method: ANY
+
+  DashboardFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: dashboard-handler
+      CodeUri: dashboard/
+      Handler: lambda_function.lambda_handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /dashboard
+            Method: ANY
+
+  IamFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: iam-handler
+      CodeUri: iam/
+      Handler: lambda_function.lambda_handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /iam
+            Method: ANY
+
+  LookupFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: lookup-handler
+      CodeUri: lookup/
+      Handler: lambda_function.lambda_handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /lookup
+            Method: ANY
+
+  ProjectsTableFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: projects_table-handler
+      CodeUri: projects_table/
+      Handler: lambda_function.lambda_handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /projects_table
+            Method: ANY
+
+  ProjectAssignmentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: project_assignment-handler
+      CodeUri: project_assignment/
+      Handler: lambda_function.lambda_handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /project_assignment
+            Method: ANY
+
+  TasksFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: tasks-handler
+      CodeUri: tasks/
+      Handler: lambda_function.lambda_handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /tasks
+            Method: ANY
+
+  TimeentriesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: timeentries-handler
+      CodeUri: timeentries/
+      Handler: lambda_function.lambda_handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /timeentries
+            Method: ANY
+
+  UpdatePasswordFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: update_password-handler
+      CodeUri: update_password/
+      Handler: lambda_function.lambda_handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /update_password
+            Method: ANY
+
+  UserLoginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: user_login-handler
+      CodeUri: user_login/
+      Handler: lambda_function.lambda_handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /user_login
+            Method: ANY
+
+  UserRoutesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: user_routes-handler
+      CodeUri: user_routes/
+      Handler: lambda_function.lambda_handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /user_routes
+            Method: ANY
+
+Outputs:
+  ApiGatewayId:
+    Description: ID of the API Gateway
+    Value: !Ref ServerlessRestApi
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayId'
+
+  ApiGatewayUrl:
+    Description: URL of the API Gateway
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/'
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayUrl'
