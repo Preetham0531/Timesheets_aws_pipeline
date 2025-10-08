@@ -1,0 +1,16 @@
+{
+  "approvals": "arn:aws:lambda:us-east-1:ACCOUNT_ID:function:approvals-handler",
+  "client_table": "arn:aws:lambda:us-east-1:ACCOUNT_ID:function:client_table-handler",
+  "contacts": "arn:aws:lambda:us-east-1:ACCOUNT_ID:function:contacts-handler",
+  "dashboard": "arn:aws:lambda:us-east-1:ACCOUNT_ID:function:dashboard-handler",
+  "iam": "arn:aws:lambda:us-east-1:ACCOUNT_ID:function:iam-handler",
+  "lookup": "arn:aws:lambda:us-east-1:ACCOUNT_ID:function:lookup-handler",
+  "projects_table": "arn:aws:lambda:us-east-1:ACCOUNT_ID:function:projects_table-handler",
+  "project_assignment": "arn:aws:lambda:us-east-1:ACCOUNT_ID:function:project_assignment-handler",
+  "tasks": "arn:aws:lambda:us-east-1:ACCOUNT_ID:function:tasks-handler",
+  "timeentries": "arn:aws:lambda:us-east-1:ACCOUNT_ID:function:timeentries-handler",
+  "update_password": "arn:aws:lambda:us-east-1:ACCOUNT_ID:function:update_password-handler",
+  "user_login": "arn:aws:lambda:us-east-1:ACCOUNT_ID:function:user_login-handler",
+  "user_routes": "arn:aws:lambda:us-east-1:ACCOUNT_ID:function:user_routes-handler"
+}
+
