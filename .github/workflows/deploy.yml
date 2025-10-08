@@ -73,27 +73,14 @@ jobs:
 
   deploy:
     needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.changed != '' || needs.detect-changes.outputs.template_changed == 'true' }}
+    if: ${{ needs.detect-changes.outputs.changed != '' }}
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module: ${{ fromJson(needs.detect-changes.outputs.changed) }}
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-
-      - name: Install SAM CLI
-        run: pip install aws-sam-cli
-
-      - name: Validate template
-        run: |
-          if ! command -v sam >/dev/null 2>&1; then
-            echo "SAM CLI not found after install"
-            exit 1
-          fi
-          sam validate --template template.yaml --region us-east-1
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -101,26 +88,31 @@ jobs:
           role-to-assume: arn:aws:iam::026090520154:role/aws_github
           aws-region: us-east-1
 
-      - name: Build SAM application
-        run: sam build --template template.yaml
-
-      - name: Deploy SAM application
+      - name: Zip function code
         run: |
-          echo "Deploying all functions (changed modules: ${{ needs.detect-changes.outputs.changed }})..."
-          sam deploy \
-            --template-file template.yaml \
-            --stack-name timesheets-api-stack \
-            --capabilities CAPABILITY_IAM \
-            --no-confirm-changeset \
-            --no-fail-on-empty-changeset \
+          MOD="${{ matrix.module }}"
+          echo "Zipping module: $MOD"
+          cd "$MOD"
+          zip -r "../function-$MOD.zip" .
+          cd -
+
+      - name: Update Lambda function code
+        run: |
+          MOD="${{ matrix.module }}"
+          FN_NAME="$MOD-handler"
+          ZIP_PATH="function-$MOD.zip"
+          echo "Updating function $FN_NAME with $ZIP_PATH"
+          aws lambda update-function-code \
+            --function-name "$FN_NAME" \
+            --zip-file "fileb://$ZIP_PATH" \
             --region us-east-1
 
-      - name: Get API Gateway URL
+      - name: Show last modified time
         run: |
-          API_URL=$(aws cloudformation describe-stacks \
-            --stack-name timesheets-api-stack \
-            --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayUrl`].OutputValue' \
+          MOD="${{ matrix.module }}"
+          FN_NAME="$MOD-handler"
+          aws lambda get-function-configuration \
+            --function-name "$FN_NAME" \
+            --query 'LastModified' \
             --output text \
-            --region us-east-1)
-          echo "API Gateway URL: $API_URL"
-          echo "You can now access your API at: $API_URL"
+            --region us-east-1
