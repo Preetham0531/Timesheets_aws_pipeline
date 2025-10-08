@@ -29,6 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.filter.outputs.changed }}
+      changed_space: ${{ steps.filter.outputs.changed_space }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -56,17 +57,18 @@ jobs:
             JSON=$(echo $CHANGED | jq -R -s -c 'split(" ")[:-1]')
             echo "changed=$JSON" >> $GITHUB_OUTPUT
           fi
+          echo "changed_space=$CHANGED" >> $GITHUB_OUTPUT
 
   deploy:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.changed != '' }}
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        module: ${{ fromJson(needs.detect-changes.outputs.changed) }}
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install tools (awscli, zip, jq)
+        run: sudo apt-get update && sudo apt-get install -y awscli zip jq
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -74,31 +76,27 @@ jobs:
           role-to-assume: arn:aws:iam::026090520154:role/aws_github
           aws-region: us-east-1
 
-      - name: Zip function code
+      - name: Update changed Lambda functions
         run: |
-          MOD="${{ matrix.module }}"
-          echo "Zipping module: $MOD"
-          cd "$MOD"
-          zip -r "../function-$MOD.zip" .
-          cd -
-
-      - name: Update Lambda function code
-        run: |
-          MOD="${{ matrix.module }}"
-          FN_NAME="$MOD-handler"
-          ZIP_PATH="function-$MOD.zip"
-          echo "Updating function $FN_NAME with $ZIP_PATH"
-          aws lambda update-function-code \
-            --function-name "$FN_NAME" \
-            --zip-file "fileb://$ZIP_PATH" \
-            --region us-east-1
-
-      - name: Show last modified time
-        run: |
-          MOD="${{ matrix.module }}"
-          FN_NAME="$MOD-handler"
-          aws lambda get-function-configuration \
-            --function-name "$FN_NAME" \
-            --query 'LastModified' \
-            --output text \
-            --region us-east-1
+          set -euo pipefail
+          CHANGED="${{ needs.detect-changes.outputs.changed_space }}"
+          echo "Changed modules: $CHANGED"
+          for MOD in $CHANGED; do
+            [ -z "$MOD" ] && continue
+            echo "Processing $MOD"
+            (cd "$MOD" && zip -r "../function-$MOD.zip" .)
+            FN_NAME="${MOD}-handler"
+            ZIP_PATH="function-$MOD.zip"
+            echo "Updating function $FN_NAME with $ZIP_PATH"
+            aws lambda update-function-code \
+              --function-name "$FN_NAME" \
+              --zip-file "fileb://$ZIP_PATH" \
+              --region us-east-1
+            echo -n "Last modified: "
+            aws lambda get-function-configuration \
+              --function-name "$FN_NAME" \
+              --query 'LastModified' \
+              --output text \
+              --region us-east-1 || true
+            rm -f "$ZIP_PATH"
+          done
