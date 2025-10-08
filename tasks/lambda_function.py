@@ -1,4 +1,5 @@
 import json
+import logging
 from utils import get_cors_headers
 from task_function import (
     handle_add_task,
@@ -10,6 +11,8 @@ from task_function import (
 
 # ——— Lambda Handler ———
 def lambda_handler(event, context):
+    logger = logging.getLogger(__name__)
+    logger.info("tasks.lambda_handler invoked")
 
     # Get HTTP method and CORS headers
     method = event.get("httpMethod", "").upper()
